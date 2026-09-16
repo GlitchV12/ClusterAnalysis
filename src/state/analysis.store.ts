@@ -4,6 +4,7 @@ import type { KMeansResult } from '../features/clustering/services/kmeans.servic
 interface ElbowPoint {
   k: number;
   wcss: number;
+  silhouetteScore: number;
 }
 
 interface AnalysisState {

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import { useAnalysisStore } from '../../../state/analysis.store';
 import { useSTPStore } from '../../../state/stp.store';

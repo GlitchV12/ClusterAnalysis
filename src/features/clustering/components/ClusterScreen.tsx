@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatasetStore } from '../../../state/dataset.store';
 import { usePrepareStore } from '../../../state/prepare.store';
@@ -6,7 +6,7 @@ import { useAnalysisStore } from '../../../state/analysis.store';
 import { PreprocessingService } from '../services/preprocessing.service';
 import { KMeansService } from '../services/kmeans.service';
 import ReactECharts from 'echarts-for-react';
-import { Activity, Play, ArrowRight, ArrowLeft, Lightbulb } from 'lucide-react';
+import { Activity, Play, ArrowLeft, Lightbulb } from 'lucide-react';
 import './ClusterScreen.css';
 
 export function ClusterScreen() {

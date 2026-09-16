@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useDatasetStore } from '../../../state/dataset.store';
 import { usePrepareStore } from '../../../state/prepare.store';
 import { useAnalysisStore } from '../../../state/analysis.store';
-import { InterpretationService, type ClusterProfile } from '../services/interpretation.service';
+import { InterpretationService } from '../services/interpretation.service';
 import ReactECharts from 'echarts-for-react';
-import { ArrowRight, ArrowLeft, Lightbulb } from 'lucide-react';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
 import './UnderstandScreen.css';
 
 // Professional color palette for clusters

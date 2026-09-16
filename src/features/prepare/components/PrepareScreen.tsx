@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatasetStore } from '../../../state/dataset.store';
 import { usePrepareStore, type ImputationStrategy, type ScalingStrategy, type OutlierStrategy } from '../../../state/prepare.store';
-import { ArrowRight, AlertTriangle, Settings2, Database, SlidersHorizontal, ArrowLeft } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Settings2, Database, ArrowLeft } from 'lucide-react';
 import './PrepareScreen.css';
 
 export function PrepareScreen() {

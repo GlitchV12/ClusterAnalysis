@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { UploadCloud, FileType2, AlertCircle } from 'lucide-react';
 import { ParserService } from '../services/parser.service';

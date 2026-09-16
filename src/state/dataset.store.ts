@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Dataset, DatasetColumn } from '../types/dataset';
+import type { Dataset } from '../types/dataset';
 import { ProfilingService, type DatasetQuality } from '../features/profiling/services/profiling.service';
 
 interface DatasetState {

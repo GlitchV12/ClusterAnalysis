@@ -1,7 +1,7 @@
 import type { Dataset } from '../../../types/dataset';
 import type { KMeansResult } from '../../clustering/services/kmeans.service';
 import { PreprocessingService } from '../../clustering/services/preprocessing.service';
-import type { ImputationStrategy, ScalingStrategy } from '../../../state/prepare.store';
+import type { ImputationStrategy, ScalingStrategy, OutlierStrategy } from '../../../state/prepare.store';
 import { PCA } from 'ml-pca';
 
 export interface ClusterProfile {

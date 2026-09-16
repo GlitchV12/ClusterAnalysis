@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useProjectStore } from '../../state/project.store';
-import { Database, FileCog, Network, Presentation, PieChart, HelpCircle, FileText } from 'lucide-react';
+import { Database, FileCog, Network, Presentation, PieChart, FileText } from 'lucide-react';
 import './AppLayout.css';
 
 const WORKFLOW_STEPS = [

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import { useDatasetStore } from '../../../state/dataset.store';
 import { UploadDropzone } from './UploadDropzone';
@@ -42,7 +42,7 @@ export function DataScreen() {
     );
   }
 
-  const hasIssues = quality.totalMissingPercent > 0 || quality.duplicateRowsPercent > 0;
+  // const hasIssues = quality.totalMissingPercent > 0 || quality.duplicateRowsPercent > 0;
 
   return (
     <div className="data-screen">
