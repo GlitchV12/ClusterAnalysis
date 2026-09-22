@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDatasetStore } from '../../../state/dataset.store';
 import { useAnalysisStore } from '../../../state/analysis.store';
 import { useSTPStore } from '../../../state/stp.store';
 import { usePrepareStore } from '../../../state/prepare.store';
 import { Printer, RefreshCcw, CheckCircle2, ChevronRight } from 'lucide-react';
+import ReactECharts from 'echarts-for-react';
+import { useUnderstandCharts } from '../../understand/hooks/useUnderstandCharts';
 import './ReportScreen.css';
 
 export function ReportScreen() {
@@ -13,6 +15,11 @@ export function ReportScreen() {
   const stpState = useSTPStore();
   const prepareState = usePrepareStore();
   const navigate = useNavigate();
+
+  const [includeRadarChart, setIncludeRadarChart] = useState(true);
+  const [includeScatterPlot, setIncludeScatterPlot] = useState(true);
+
+  const { radarChartOption, scatterChartOption } = useUnderstandCharts();
 
   // Calculate cluster sizes based on assignments
   const clusterSizes = useMemo(() => {
@@ -60,6 +67,26 @@ export function ReportScreen() {
     <div className="report-screen">
       
       <div className="report-actions no-print">
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginRight: 'auto' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={includeRadarChart} 
+              onChange={e => setIncludeRadarChart(e.target.checked)} 
+              style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--color-primary-600, #2563eb)' }}
+            />
+            Include Radar Chart
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={includeScatterPlot} 
+              onChange={e => setIncludeScatterPlot(e.target.checked)} 
+              style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--color-primary-600, #2563eb)' }}
+            />
+            Include Scatter Plot
+          </label>
+        </div>
         <button className="btn-secondary" onClick={handleReset}>
           <RefreshCcw size={16} /> Start New Analysis
         </button>
@@ -161,6 +188,27 @@ export function ReportScreen() {
             </tbody>
           </table>
         </section>
+
+        {/* Section 4: Visualizations */}
+        {(includeRadarChart || includeScatterPlot) && (
+          <section className="report-section">
+            <h2>4. Visualizations</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              {includeRadarChart && Object.keys(radarChartOption).length > 0 && (
+                <div>
+                  <h3 style={{ marginBottom: '16px' }}>Cluster Profiles</h3>
+                  <ReactECharts option={radarChartOption} style={{ height: '400px' }} opts={{ renderer: 'svg' }} />
+                </div>
+              )}
+              {includeScatterPlot && Object.keys(scatterChartOption).length > 0 && (
+                <div>
+                  <h3 style={{ marginBottom: '16px' }}>Feature Distribution</h3>
+                  <ReactECharts option={scatterChartOption} style={{ height: '400px' }} opts={{ renderer: 'svg' }} />
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
       </div>
     </div>

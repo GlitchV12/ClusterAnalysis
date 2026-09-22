@@ -8,19 +8,8 @@ import ReactECharts from 'echarts-for-react';
 import { ArrowRight, ArrowLeft, Maximize2, X } from 'lucide-react';
 import './UnderstandScreen.css';
 
-// Professional color palette for clusters
-const CLUSTER_COLORS = [
-  '#4F46E5', // Indigo
-  '#0F766E', // Teal
-  '#EA580C', // Orange
-  '#BE185D', // Pink
-  '#1D4ED8', // Blue
-  '#047857', // Emerald
-  '#A21CAF', // Fuchsia
-  '#B45309', // Amber
-  '#4338CA', // Indigo darker
-  '#0F172A', // Slate
-];
+import { useUnderstandStore } from '../../../state/understand.store';
+import { useUnderstandCharts, CLUSTER_COLORS } from '../hooks/useUnderstandCharts';
 
 export function UnderstandScreen() {
   const { dataset } = useDatasetStore();
@@ -28,132 +17,26 @@ export function UnderstandScreen() {
   const analysisState = useAnalysisStore();
   const navigate = useNavigate();
 
-  const profileData = useMemo(() => {
-    if (!dataset || !analysisState.clusteringResult) return null;
-    return InterpretationService.generateProfiles(
-      dataset,
-      prepareState.selectedFeatures,
-      prepareState.imputationStrategy,
-      prepareState.outlierStrategy,
-      analysisState.clusteringResult
-    );
-  }, [dataset, prepareState, analysisState.clusteringResult]);
+  const understandState = useUnderstandStore();
+  
+  const {
+    xFeature, setXFeature,
+    yFeature, setYFeature,
+    projectionMode, setProjectionMode,
+    swapPCA, setSwapPCA,
+    rotation, setRotation,
+    selectedRadarFeatures, setSelectedRadarFeatures
+  } = understandState;
 
-  const profiles = profileData?.profiles || null;
-  const featureNames = profileData?.featureNames || [];
-
-  const [xFeature, setXFeature] = useState<string>('');
-  const [yFeature, setYFeature] = useState<string>('');
-  const [projectionMode, setProjectionMode] = useState<'raw' | 'pca'>('pca');
-  const [swapPCA, setSwapPCA] = useState<boolean>(false);
-  const [rotation, setRotation] = useState<number>(0);
   const [expandedPanel, setExpandedPanel] = useState<'profiles' | 'distribution' | null>(null);
-  const [selectedRadarFeatures, setSelectedRadarFeatures] = useState<string[]>([]);
   const [isRadarFilterOpen, setIsRadarFilterOpen] = useState(false);
 
-  React.useEffect(() => {
-    if (featureNames.length > 0) {
-      if (!featureNames.includes(xFeature)) setXFeature(featureNames[0]);
-      if (!featureNames.includes(yFeature)) setYFeature(featureNames[1] || featureNames[0]);
-    }
-  }, [featureNames, xFeature, yFeature]);
-
-  React.useEffect(() => {
-    // Only reset if our current selection is completely invalid (e.g. dataset changed)
-    if (selectedRadarFeatures.length === 0 || !selectedRadarFeatures.every(f => featureNames.includes(f))) {
-      setSelectedRadarFeatures(featureNames);
-    }
-  }, [featureNames]);
-
-  const scatterData = useMemo(() => {
-    if (!dataset || !analysisState.clusteringResult) return [];
-    
-    if (projectionMode === 'pca') {
-      return InterpretationService.getPCAData(
-        dataset,
-        prepareState.selectedFeatures,
-        prepareState.imputationStrategy,
-        prepareState.scalingStrategy,
-        prepareState.outlierStrategy,
-        analysisState.clusteringResult.clusterAssignments
-      );
-    } else {
-      if (!xFeature || !yFeature) return [];
-      return InterpretationService.getScatterData(
-        dataset,
-        prepareState.selectedFeatures,
-        prepareState.imputationStrategy,
-        prepareState.outlierStrategy,
-        analysisState.clusteringResult.clusterAssignments,
-        xFeature,
-        yFeature
-      );
-    }
-  }, [dataset, prepareState, analysisState.clusteringResult, projectionMode, xFeature, yFeature]);
-
-  // ECharts Options
-  const sizeChartOption = useMemo(() => {
-    if (!profiles) return {};
-    return {
-      tooltip: { trigger: 'item' },
-      grid: { left: '5%', right: '5%', bottom: '15%', top: '10%' },
-      xAxis: {
-        type: 'category',
-        data: profiles.map(p => `Cluster ${p.id}`),
-        axisLine: { show: false },
-        axisTick: { show: false }
-      },
-      yAxis: { show: false },
-      series: [
-        {
-          type: 'bar',
-          data: profiles.map((p, i) => ({
-            value: p.size,
-            itemStyle: { color: CLUSTER_COLORS[i % CLUSTER_COLORS.length], borderRadius: [4, 4, 0, 0] }
-          })),
-          barWidth: '60%',
-          label: { show: true, position: 'top', formatter: '{c}' }
-        }
-      ]
-    };
-  }, [profiles]);
-
-  const radarChartOption = useMemo(() => {
-    if (!profiles || selectedRadarFeatures.length === 0) return {};
-    
-    // Normalize data for radar chart so variables with huge scales don't crush small scales
-    // We calculate the max value across all clusters for each feature
-    const maxValues: Record<string, number> = {};
-    selectedRadarFeatures.forEach(f => {
-      maxValues[f] = Math.max(...profiles.map(p => p.averages[f])) || 1; 
-    });
-
-    return {
-      tooltip: { trigger: 'item' },
-      legend: {
-        data: profiles.map(p => `Cluster ${p.id}`),
-        top: 0,
-        type: 'scroll',
-      },
-      radar: {
-        indicator: selectedRadarFeatures.map(f => ({ name: f, max: maxValues[f] * 1.1 })), // +10% padding
-        splitArea: { show: false },
-        axisLine: { lineStyle: { color: '#E5E7EB' } },
-        splitLine: { lineStyle: { color: '#E5E7EB' } },
-      },
-      series: [
-        {
-          type: 'radar',
-          data: profiles.map((p, i) => ({
-            value: selectedRadarFeatures.map(f => p.averages[f]),
-            name: `Cluster ${p.id}`,
-            itemStyle: { color: CLUSTER_COLORS[i % CLUSTER_COLORS.length] },
-            areaStyle: { opacity: 0.1 }
-          }))
-        }
-      ]
-    };
-  }, [profiles, selectedRadarFeatures]);
+  const {
+    profiles,
+    featureNames,
+    radarChartOption,
+    scatterChartOption
+  } = useUnderstandCharts();
 
   const renderRadarFilters = () => (
     <div style={{ position: 'relative', zIndex: 10 }}>
@@ -225,63 +108,45 @@ export function UnderstandScreen() {
     </div>
   );
 
-  const scatterChartOption = useMemo(() => {
-    if (!profiles || scatterData.length === 0) return {};
-
-    const rotatePoint = (x: number, y: number, angleDegrees: number) => {
-      const rad = (angleDegrees * Math.PI) / 180;
-      return [
-        x * Math.cos(rad) - y * Math.sin(rad),
-        x * Math.sin(rad) + y * Math.cos(rad)
-      ];
-    };
-
-    const series = profiles.map(p => ({
-      name: `Cluster ${p.id}`,
-      type: 'scatter',
-      symbolSize: 8,
-      itemStyle: { color: CLUSTER_COLORS[p.id % CLUSTER_COLORS.length] },
-      data: scatterData.filter(d => d.cluster === p.id).map(d => {
-        if (projectionMode === 'pca') {
-          const px = swapPCA ? d.y : d.x;
-          const py = swapPCA ? d.x : d.y;
-          return rotatePoint(px, py, rotation);
-        }
-        return [d.x, d.y];
-      })
-    }));
-
+  // Size Chart Option (kept local as it doesn't need to be shared)
+  const sizeChartOption = useMemo(() => {
+    if (!profiles) return {};
     return {
-      tooltip: {
-        trigger: 'item',
-        formatter: (params: any) => {
-          if (projectionMode === 'pca') {
-            const pcX = swapPCA ? 'PC2' : 'PC1';
-            const pcY = swapPCA ? 'PC1' : 'PC2';
-            return `${params.seriesName}<br/>${pcX}: ${params.value[0].toFixed(2)}<br/>${pcY}: ${params.value[1].toFixed(2)}`;
-          }
-          return `${params.seriesName}<br/>${xFeature}: ${params.value[0]}<br/>${yFeature}: ${params.value[1]}`;
-        }
-      },
-      legend: { top: 0, type: 'scroll' },
-      grid: { left: '10%', right: '5%', bottom: '10%', top: '15%' },
+      tooltip: { trigger: 'item' },
+      grid: { left: '5%', right: '5%', bottom: '15%', top: '10%' },
       xAxis: {
-        type: 'value',
-        name: projectionMode === 'pca' ? (swapPCA ? 'Principal Component 2' : 'Principal Component 1') : xFeature,
-        nameLocation: 'middle',
-        nameGap: 25,
-        splitLine: { show: false }
+        type: 'category',
+        data: profiles.map(p => `Cluster ${p.id}`),
+        axisLine: { show: false },
+        axisTick: { show: false }
       },
-      yAxis: {
-        type: 'value',
-        name: projectionMode === 'pca' ? (swapPCA ? 'Principal Component 1' : 'Principal Component 2') : yFeature,
-        nameLocation: 'middle',
-        nameGap: 40,
-        splitLine: { lineStyle: { type: 'dashed', color: '#E5E7EB' } }
-      },
-      series
+      yAxis: { show: false },
+      series: [
+        {
+          type: 'bar',
+          data: profiles.map((p, i) => ({
+            value: p.size,
+            itemStyle: { color: CLUSTER_COLORS[i % CLUSTER_COLORS.length], borderRadius: [4, 4, 0, 0] }
+          })),
+          barWidth: '60%',
+          label: { show: true, position: 'top', formatter: '{c}' }
+        }
+      ]
     };
-  }, [profiles, scatterData, xFeature, yFeature, projectionMode, swapPCA, rotation]);
+  }, [profiles]);
+
+  React.useEffect(() => {
+    if (featureNames.length > 0) {
+      if (!featureNames.includes(xFeature)) setXFeature(featureNames[0]);
+      if (!featureNames.includes(yFeature)) setYFeature(featureNames[1] || featureNames[0]);
+    }
+  }, [featureNames, xFeature, yFeature, setXFeature, setYFeature]);
+
+  React.useEffect(() => {
+    if (selectedRadarFeatures.length === 0 || !selectedRadarFeatures.every(f => featureNames.includes(f))) {
+      setSelectedRadarFeatures(featureNames);
+    }
+  }, [featureNames, selectedRadarFeatures.length, setSelectedRadarFeatures]);
 
 
   if (!dataset || !analysisState.clusteringResult) {
