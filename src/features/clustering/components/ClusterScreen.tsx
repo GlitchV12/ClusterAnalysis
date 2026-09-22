@@ -52,7 +52,7 @@ export function ClusterScreen() {
       }
     };
 
-    if (!analysisState.elbowData) {
+    if (!analysisState.elbowData || !localMatrix) {
       generateInitialData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,17 +60,18 @@ export function ClusterScreen() {
 
   const handleRunClustering = async () => {
     if (!localMatrix) return;
-    
+
     try {
       analysisState.setAnalyzing(true);
       await new Promise(r => setTimeout(r, 500)); // UX delay
-      
+
       const result = KMeansService.runKMeans(localMatrix, analysisState.selectedK);
       analysisState.setClusteringResult(result);
-      
+
       navigate('/understand');
     } catch (err: any) {
       setError(err.message || 'Failed to run clustering');
+    } finally {
       analysisState.setAnalyzing(false);
     }
   };
@@ -173,7 +174,7 @@ export function ClusterScreen() {
         </div>
         <div className="header-actions">
           <button className="btn-secondary" onClick={() => navigate('/prepare')}>
-             <ArrowLeft size={16} /> Back to Prepare
+            <ArrowLeft size={16} /> Back to Prepare
           </button>
         </div>
       </div>
@@ -192,7 +193,7 @@ export function ClusterScreen() {
         </div>
       ) : analysisState.elbowData && (
         <div className="analysis-layout">
-          
+
           {/* Main Chart Area */}
           <div className="chart-container card" style={{ position: 'relative' }}>
             <div className="card-header flex-between">
@@ -205,28 +206,28 @@ export function ClusterScreen() {
                   </p>
                 )}
               </div>
-              <button 
-                className="btn-secondary btn-sm" 
+              <button
+                className="btn-secondary btn-sm"
                 onClick={() => setShowTip(!showTip)}
                 style={{ padding: '4px 8px', height: 'auto' }}
               >
                 <Lightbulb size={16} /> Tip
               </button>
             </div>
-            
+
             {showTip && (
               <div className="info-box" style={{ margin: '0 24px' }}>
                 <p style={{ margin: 0, fontSize: '13px' }}>
-                  <strong>How to read this chart:</strong><br/>
-                  - <strong>WCSS (Blue line):</strong> Look for the "elbow" where the curve flattens out.<br/>
+                  <strong>How to read this chart:</strong><br />
+                  - <strong>WCSS (Blue line):</strong> Look for the "elbow" where the curve flattens out.<br />
                   - <strong>Silhouette Score (Green line):</strong> Ranges from -1 to 1. Higher is better. The peak indicates the most mathematically distinct clusters.
                 </p>
               </div>
             )}
             <div className="chart-wrapper">
-              <ReactECharts 
-                option={chartOption} 
-                style={{ height: '400px', width: '100%' }} 
+              <ReactECharts
+                option={chartOption}
+                style={{ height: '400px', width: '100%' }}
                 opts={{ renderer: 'svg' }}
               />
             </div>
@@ -237,14 +238,14 @@ export function ClusterScreen() {
             <div className="card-header">
               <h3>Configuration</h3>
             </div>
-            
+
             <div className="config-group">
               <label>Select Optimal Clusters (K)</label>
               <div className="k-selector">
-                <input 
-                  type="range" 
-                  min="2" 
-                  max="10" 
+                <input
+                  type="range"
+                  min="2"
+                  max="10"
                   step="1"
                   value={analysisState.selectedK}
                   onChange={(e) => analysisState.setSelectedK(Number(e.target.value))}
@@ -257,7 +258,7 @@ export function ClusterScreen() {
             </div>
 
             <div className="action-area">
-              <button 
+              <button
                 className="btn-primary w-full run-btn"
                 onClick={handleRunClustering}
                 disabled={analysisState.isAnalyzing}
@@ -269,11 +270,11 @@ export function ClusterScreen() {
                 )}
               </button>
             </div>
-            
+
             <div className="info-box">
               <Activity size={18} className="info-icon" />
               <p>
-                <strong>What happens next?</strong><br/>
+                <strong>What happens next?</strong><br />
                 We will run the K-Means algorithm using your selected {prepareState.selectedFeatures.length} features and K={analysisState.selectedK}. We will assign a cluster ID to every row in your dataset.
               </p>
             </div>

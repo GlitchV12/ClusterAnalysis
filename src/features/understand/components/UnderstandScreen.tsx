@@ -5,7 +5,7 @@ import { usePrepareStore } from '../../../state/prepare.store';
 import { useAnalysisStore } from '../../../state/analysis.store';
 import { InterpretationService } from '../services/interpretation.service';
 import ReactECharts from 'echarts-for-react';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Maximize2, X } from 'lucide-react';
 import './UnderstandScreen.css';
 
 // Professional color palette for clusters
@@ -47,6 +47,9 @@ export function UnderstandScreen() {
   const [projectionMode, setProjectionMode] = useState<'raw' | 'pca'>('pca');
   const [swapPCA, setSwapPCA] = useState<boolean>(false);
   const [rotation, setRotation] = useState<number>(0);
+  const [expandedPanel, setExpandedPanel] = useState<'profiles' | 'distribution' | null>(null);
+  const [selectedRadarFeatures, setSelectedRadarFeatures] = useState<string[]>([]);
+  const [isRadarFilterOpen, setIsRadarFilterOpen] = useState(false);
 
   React.useEffect(() => {
     if (featureNames.length > 0) {
@@ -54,6 +57,13 @@ export function UnderstandScreen() {
       if (!featureNames.includes(yFeature)) setYFeature(featureNames[1] || featureNames[0]);
     }
   }, [featureNames, xFeature, yFeature]);
+
+  React.useEffect(() => {
+    // Only reset if our current selection is completely invalid (e.g. dataset changed)
+    if (selectedRadarFeatures.length === 0 || !selectedRadarFeatures.every(f => featureNames.includes(f))) {
+      setSelectedRadarFeatures(featureNames);
+    }
+  }, [featureNames]);
 
   const scatterData = useMemo(() => {
     if (!dataset || !analysisState.clusteringResult) return [];
@@ -109,12 +119,12 @@ export function UnderstandScreen() {
   }, [profiles]);
 
   const radarChartOption = useMemo(() => {
-    if (!profiles) return {};
+    if (!profiles || selectedRadarFeatures.length === 0) return {};
     
     // Normalize data for radar chart so variables with huge scales don't crush small scales
     // We calculate the max value across all clusters for each feature
     const maxValues: Record<string, number> = {};
-    featureNames.forEach(f => {
+    selectedRadarFeatures.forEach(f => {
       maxValues[f] = Math.max(...profiles.map(p => p.averages[f])) || 1; 
     });
 
@@ -126,7 +136,7 @@ export function UnderstandScreen() {
         type: 'scroll',
       },
       radar: {
-        indicator: featureNames.map(f => ({ name: f, max: maxValues[f] * 1.1 })), // +10% padding
+        indicator: selectedRadarFeatures.map(f => ({ name: f, max: maxValues[f] * 1.1 })), // +10% padding
         splitArea: { show: false },
         axisLine: { lineStyle: { color: '#E5E7EB' } },
         splitLine: { lineStyle: { color: '#E5E7EB' } },
@@ -135,7 +145,7 @@ export function UnderstandScreen() {
         {
           type: 'radar',
           data: profiles.map((p, i) => ({
-            value: featureNames.map(f => p.averages[f]),
+            value: selectedRadarFeatures.map(f => p.averages[f]),
             name: `Cluster ${p.id}`,
             itemStyle: { color: CLUSTER_COLORS[i % CLUSTER_COLORS.length] },
             areaStyle: { opacity: 0.1 }
@@ -143,7 +153,77 @@ export function UnderstandScreen() {
         }
       ]
     };
-  }, [profiles, featureNames]);
+  }, [profiles, selectedRadarFeatures]);
+
+  const renderRadarFilters = () => (
+    <div style={{ position: 'relative', zIndex: 10 }}>
+      <button 
+        className="btn-secondary btn-sm"
+        onClick={() => setIsRadarFilterOpen(!isRadarFilterOpen)}
+        style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px' }}
+      >
+        Filter Variables ({selectedRadarFeatures.length}/{featureNames.length})
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      
+      {isRadarFilterOpen && (
+        <>
+          <div 
+            style={{ position: 'fixed', inset: 0, zIndex: 10 }} 
+            onClick={() => setIsRadarFilterOpen(false)} 
+          />
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            marginTop: '8px',
+            backgroundColor: 'var(--color-surface, #fff)',
+            border: '1px solid var(--color-border, #e5e7eb)',
+            borderRadius: 'var(--radius-md, 6px)',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            padding: '12px',
+            zIndex: 20,
+            minWidth: '220px',
+            maxHeight: '300px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary, #6b7280)', textTransform: 'uppercase' }}>Select Variables</span>
+              <button 
+                onClick={() => setSelectedRadarFeatures(featureNames)}
+                style={{ background: 'none', border: 'none', color: 'var(--color-primary-600, #2563eb)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+              >
+                Reset All
+              </button>
+            </div>
+            {featureNames.map(f => {
+              const isSelected = selectedRadarFeatures.includes(f);
+              return (
+                <label key={f} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer', color: 'var(--color-text-primary, #111827)' }}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => {
+                      setSelectedRadarFeatures(prev => 
+                        prev.includes(f) 
+                          ? prev.filter(x => x !== f) 
+                          : [...prev, f]
+                      );
+                    }}
+                    style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--color-primary-600, #2563eb)' }}
+                  />
+                  {f}
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   const scatterChartOption = useMemo(() => {
     if (!profiles || scatterData.length === 0) return {};
@@ -243,12 +323,24 @@ export function UnderstandScreen() {
         {/* Bottom Row: Radar and Scatter */}
         <div className="charts-grid">
           <div className="card">
-            <div className="card-header flex-between">
+            <div className="card-header flex-between" style={{ alignItems: 'center' }}>
               <div>
                 <h3>Cluster Profiles</h3>
                 <p>Average variable values per cluster (normalized for display).</p>
               </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {renderRadarFilters()}
+                <button 
+                  className="btn-secondary btn-sm" 
+                  onClick={() => setExpandedPanel('profiles')}
+                  title="Expand Cluster Profiles"
+                  style={{ padding: 0, width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                >
+                  <Maximize2 size={16} />
+                </button>
+              </div>
             </div>
+            
             <ReactECharts option={radarChartOption} style={{ height: '400px' }} opts={{ renderer: 'svg' }} />
             
             <div className="defining-characteristics mt-4">
@@ -292,18 +384,28 @@ export function UnderstandScreen() {
                   <h3>Feature Distribution</h3>
                   <p>Visualize the clusters across two dimensions.</p>
                 </div>
-                <div className="btn-group">
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div className="btn-group">
+                    <button 
+                      className={`btn-sm ${projectionMode === 'pca' ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setProjectionMode('pca')}
+                    >
+                      PCA Projection
+                    </button>
+                    <button 
+                      className={`btn-sm ${projectionMode === 'raw' ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setProjectionMode('raw')}
+                    >
+                      Raw Features
+                    </button>
+                  </div>
                   <button 
-                    className={`btn-sm ${projectionMode === 'pca' ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => setProjectionMode('pca')}
+                    className="btn-secondary btn-sm" 
+                    onClick={() => setExpandedPanel('distribution')}
+                    title="Expand Feature Distribution"
+                    style={{ padding: 0, width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                   >
-                    PCA Projection
-                  </button>
-                  <button 
-                    className={`btn-sm ${projectionMode === 'raw' ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => setProjectionMode('raw')}
-                  >
-                    Raw Features
+                    <Maximize2 size={16} />
                   </button>
                 </div>
               </div>
@@ -341,6 +443,111 @@ export function UnderstandScreen() {
         </div>
 
       </div>
+
+      {expandedPanel && (
+        <div className="modal-overlay" onClick={() => setExpandedPanel(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="flex-between" style={{ marginBottom: '16px' }}>
+              <h2>{expandedPanel === 'profiles' ? 'Cluster Profiles' : 'Feature Distribution'}</h2>
+              <button className="modal-close-btn" onClick={() => setExpandedPanel(null)}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            {expandedPanel === 'profiles' && (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '600px' }}>
+                <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                  {renderRadarFilters()}
+                </div>
+                <ReactECharts option={radarChartOption} style={{ flex: 1, minHeight: '500px' }} opts={{ renderer: 'svg' }} />
+                
+                <div className="defining-characteristics mt-4">
+                  <h4 style={{ marginBottom: '8px', fontSize: '16px', color: '#4B5563' }}>Top Defining Features</h4>
+                  <div style={{ display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                    {profiles?.map(p => {
+                      const topFeatures = Object.entries(p.importanceScores)
+                        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                        .slice(0, 5);
+                        
+                      return (
+                        <div key={p.id} style={{ display: 'flex', fontSize: '14px', alignItems: 'center' }}>
+                          <span style={{ 
+                            display: 'inline-block', 
+                            width: '16px', height: '16px', 
+                            backgroundColor: CLUSTER_COLORS[p.id % CLUSTER_COLORS.length], 
+                            borderRadius: '4px', 
+                            marginRight: '12px' 
+                          }}></span>
+                          <strong style={{ minWidth: '80px' }}>Cluster {p.id}:</strong>
+                          <span style={{ color: '#6B7280' }}>
+                            {topFeatures.map(([feat, score], i) => (
+                              <span key={feat}>
+                                {feat} <span style={{ color: score > 0 ? '#10B981' : '#EF4444' }}>({score > 0 ? '+' : ''}{score.toFixed(1)}σ)</span>
+                                {i < 4 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {expandedPanel === 'distribution' && (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '600px' }}>
+                <div className="flex-between" style={{ marginBottom: '16px' }}>
+                  <div className="btn-group">
+                    <button 
+                      className={`btn-sm ${projectionMode === 'pca' ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setProjectionMode('pca')}
+                    >
+                      PCA Projection
+                    </button>
+                    <button 
+                      className={`btn-sm ${projectionMode === 'raw' ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setProjectionMode('raw')}
+                    >
+                      Raw Features
+                    </button>
+                  </div>
+
+                  {projectionMode === 'raw' && (
+                    <div className="scatter-controls" style={{ marginTop: 0 }}>
+                      <select value={xFeature} onChange={e => setXFeature(e.target.value)} className="form-select small">
+                        {featureNames.map(f => <option key={`x-${f}`} value={f}>{f} (X Axis)</option>)}
+                      </select>
+                      <select value={yFeature} onChange={e => setYFeature(e.target.value)} className="form-select small">
+                        {featureNames.map(f => <option key={`y-${f}`} value={f}>{f} (Y Axis)</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {projectionMode === 'pca' && (
+                    <div className="scatter-controls" style={{ marginTop: 0 }}>
+                      <button 
+                        className="btn-secondary btn-sm" 
+                        onClick={() => setSwapPCA(!swapPCA)}
+                      >
+                        Swap Axes (PC1 ⇄ PC2)
+                      </button>
+                      <button 
+                        className="btn-secondary btn-sm" 
+                        onClick={() => setRotation((r) => (r + 90) % 360)}
+                      >
+                        Rotate 90°
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                <ReactECharts option={scatterChartOption} style={{ flex: 1, minHeight: '500px' }} opts={{ renderer: 'svg' }} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
